@@ -67,7 +67,7 @@ class CasQueueMPMC
 				p_queue[ii].c_wait = C_INIT;
 			}
 		}
-		
+
 		virtual ~CasQueueMPMC()
 		{
 			delete [] p_queue;
@@ -75,23 +75,25 @@ class CasQueueMPMC
 
 		void Product(T &t_product)
 		{
+			// product_index为类成员变量，表示生产索引，利用unsigned long类型达到最大值后循环归零的特性递增生产索引, 为多个生产者原子性分配生产entry位置
 			unsigned long current_product_index = __sync_fetch_and_add(&product_index, 1);
-			current_product_index &= (size - 1);
+			current_product_index &= (size - 1);  // 代替取模操作提升性能，size为队列初始化entry个数，必须为2的N次幂
 
+			// loop_entry_product 为防止多个生产者时，有些生产者速度快甩其它生产者一圈后与速度慢的生产者进入了同一个entry，此时快的生产者必须轮询等待慢的生产者生产完毕，而不能越过该entry，如果越过该entry可能导致在该entry的消费者永远阻塞
 loop_entry_product:
-			// 进前门
+			// 生产者进前门，使用cas的原因为有可能多个生产者的情况下，防止有速度快的生产者套圈后又回到了这个位置的entry后导致有多个生产者同时进入一个entry
 			bool is_enter = __sync_bool_compare_and_swap(&p_queue[current_product_index].f_door, FRONT_DOOR_OPEN, FRONT_DOOR_CLOSE);
 			if (true == is_enter)
 			{
-				// 判断entry状态
+				// 判断entry状态，如果为空则置为生产状态
 				bool is_product = __sync_bool_compare_and_swap(&p_queue[current_product_index].e_state, EMPTY, PRODUCT);
 				if (true == is_product)
 				{
 					// 生产数据
 					p_queue[current_product_index].data = t_product;
-					p_queue[current_product_index].p_wait = P_INIT;
+					p_queue[current_product_index].p_wait = P_INIT;  // 每次生产完数据需要将p_wait初始化
 
-					__AwakeConsume(current_product_index);
+					__AwakeConsume(current_product_index);  // 判断是否唤醒消费者
 
 					// 打开前门
 					__sync_lock_test_and_set(&p_queue[current_product_index].f_door, FRONT_DOOR_OPEN);
@@ -234,23 +236,48 @@ loop_consume:
 		enum product_wait {P_INIT = 0, P_WAIT, P_IGNORE};
 		enum consume_wait {C_INIT = 0, C_WAIT, C_IGNORE};
 
+		/*每个队列由N个entry组成，每个entry的数据结构如下*/
 		typedef struct 
 		{
-			T data;
+			T data;  // 实际生产、消费的数据，可以为任意类型，对于复杂类型必须自己重置等于号操作符
 
+			/* 
+			 * 	【entry的四种状态】
+			 *
+			 * EMPTY	0: 表示entry为空可以生产
+			 * PRODUCT	1: 表示entry有生产者正在生产
+			 * FULL		2: 表示entry有数据可以消费
+			 * CONSUME	3: 表示有消费者正在消费
+			 *
+			 */
 			entry_state e_state;
 
-			front_door f_door;
-			back_door b_door;
+			front_door f_door;	// 前门，防止多个生产者同时进入同一个entry，只有在多个生产者模式下此标识才有作用，因为有的生产者领先其它生产者套圈的情况出现
+			back_door b_door;	// 后门，防止多个消费者同时进入同一个entry，只有在多个消费者模式下此标识才有作用，因为有的消费者领先其它消费者套圈的情况出现
 
 			pthread_mutex_t product_mutex;
-			pthread_cond_t product_cond;
-			bool product_awake_flag;  // true：表示生产者等待消费者唤醒，false：表示生产者已被消费者唤醒
+			pthread_cond_t product_cond;	// 唤醒生产者条件变量
+			bool product_awake_flag;	// true：表示唤醒消费者
+			/*
+			 * 	【p_wait 表示生产者是否等待消费者唤醒，CAS阻塞队列的精髓】
+			 *
+			 * P_INIT	0: 初始值也即抢占值
+			 * P_WAIT	1: 生产者抢占成功后置，表示生产者需>要阻塞在该entry上等待消费者唤醒
+			 * P_IGNORE	2: 消费者抢占成功后置，表示忽略本次唤醒生产者
+			 *
+			 */
 			product_wait p_wait;
 
 			pthread_mutex_t consume_mutex;
-			pthread_cond_t consume_cond;
-			bool consume_awake_flag;  // true：表示消费者等待生产者唤醒，false：表示消费者已被生产者唤醒
+			pthread_cond_t consume_cond;	// 唤醒消费者条件变量
+			bool consume_awake_flag;	// true：表示唤醒生产者
+			/*
+			 *	 【c_wait 表示消费者是否等待生产者唤醒，CAS阻塞队列的精髓】
+			 *
+			 * C_INIT	0: 初始值也即抢占值
+			 * C_WAIT	1: 消费者抢占成功后置，表示消费者需>要阻塞在该entry上等待生产者唤醒
+			 * C_IGNORE	2: 生产者抢占成功后置，表示忽略本次唤醒消费者
+			 */
 			consume_wait c_wait;
 		} ENTRY;
 
@@ -358,7 +385,7 @@ class CasQueueMPOC
 				p_queue[ii].c_wait = C_INIT;
 			}
 		}
-		
+
 		virtual ~CasQueueMPOC()
 		{
 			delete [] p_queue;
@@ -626,7 +653,7 @@ class CasQueueOPMC
 				p_queue[ii].c_wait = C_INIT;
 			}
 		}
-		
+
 		virtual ~CasQueueOPMC()
 		{
 			delete [] p_queue;
@@ -890,7 +917,7 @@ class CasQueueOPOC
 				p_queue[ii].c_wait = C_INIT;
 			}
 		}
-		
+
 		virtual ~CasQueueOPOC()
 		{
 			delete [] p_queue;
@@ -1088,7 +1115,7 @@ class CasQueueNoBlockMPMC
 		{
 			size = 16384;
 			product_index = consume_index = 0;
-			
+
 			p_queue = new ENTRY [size];
 
 			// 初始化队列
@@ -1139,7 +1166,7 @@ loop_product:
 					p_queue[current_product_index].data = t_product;
 					__sync_lock_test_and_set(&p_queue[current_product_index].e_state, FULL);
 					__sync_lock_test_and_set(&p_queue[current_product_index].f_door, FRONT_DOOR_OPEN);
-					
+
 					return true;
 				}
 				else
@@ -1169,7 +1196,7 @@ loop_consume:
 					t_consume = p_queue[current_consume_index].data;
 					__sync_lock_test_and_set(&p_queue[current_consume_index].e_state, EMPTY);
 					__sync_lock_test_and_set(&p_queue[current_consume_index].b_door, BACK_DOOR_OPEN);
-					
+
 					return true;
 				}
 				else
@@ -1186,24 +1213,24 @@ loop_consume:
 		}
 
 	private:
-                enum entry_state {EMPTY = 0, PRODUCT, FULL, CONSUME};
-                enum front_door {FRONT_DOOR_OPEN = 0, FRONT_DOOR_CLOSE};
-                enum back_door {BACK_DOOR_OPEN = 0, BACK_DOOR_CLOSE};
+		enum entry_state {EMPTY = 0, PRODUCT, FULL, CONSUME};
+		enum front_door {FRONT_DOOR_OPEN = 0, FRONT_DOOR_CLOSE};
+		enum back_door {BACK_DOOR_OPEN = 0, BACK_DOOR_CLOSE};
 
-                typedef struct
-                {
-                        T data;
+		typedef struct
+		{
+			T data;
 
-                        entry_state e_state;
+			entry_state e_state;
 
-                        front_door f_door;
-                        back_door b_door;
-                } ENTRY;
+			front_door f_door;
+			back_door b_door;
+		} ENTRY;
 
-                ENTRY *p_queue __attribute__((aligned(64)));
-                unsigned int size __attribute__((aligned(64)));
-                unsigned long product_index __attribute__((aligned(64)));
-                unsigned long consume_index __attribute__((aligned(64)));
+		ENTRY *p_queue __attribute__((aligned(64)));
+		unsigned int size __attribute__((aligned(64)));
+		unsigned long product_index __attribute__((aligned(64)));
+		unsigned long consume_index __attribute__((aligned(64)));
 };
 
 // 多生产者单消费者非阻塞队列
@@ -1215,7 +1242,7 @@ class CasQueueNoBlockMPOC
 		{
 			size = 16384;
 			product_index = consume_index = 0;
-			
+
 			p_queue = new ENTRY [size];
 
 			// 初始化队列
@@ -1264,7 +1291,7 @@ loop_product:
 					p_queue[current_product_index].data = t_product;
 					__sync_lock_test_and_set(&p_queue[current_product_index].e_state, FULL);
 					__sync_lock_test_and_set(&p_queue[current_product_index].f_door, FRONT_DOOR_OPEN);
-					
+
 					return true;
 				}
 				else
@@ -1302,19 +1329,19 @@ loop_product:
 		enum entry_state {EMPTY = 0, PRODUCT, FULL, CONSUME};
 		enum front_door {FRONT_DOOR_OPEN = 0, FRONT_DOOR_CLOSE};
 
-                typedef struct
-                {
-                        T data;
+		typedef struct
+		{
+			T data;
 
-                        entry_state e_state;
+			entry_state e_state;
 
-                        front_door f_door;
-                } ENTRY;
+			front_door f_door;
+		} ENTRY;
 
-                ENTRY *p_queue __attribute__((aligned(64)));
-                unsigned int size __attribute__((aligned(64)));
-                unsigned long product_index __attribute__((aligned(64)));
-                unsigned long consume_index __attribute__((aligned(64)));
+		ENTRY *p_queue __attribute__((aligned(64)));
+		unsigned int size __attribute__((aligned(64)));
+		unsigned long product_index __attribute__((aligned(64)));
+		unsigned long consume_index __attribute__((aligned(64)));
 };
 
 // 单生产者多消费者非阻塞队列
@@ -1326,7 +1353,7 @@ class CasQueueNoBlockOPMC
 		{
 			size = 16384;
 			product_index = consume_index = 0;
-			
+
 			p_queue = new ENTRY [size];
 
 			// 初始化队列
@@ -1394,7 +1421,7 @@ loop_consume:
 					t_consume = p_queue[current_consume_index].data;
 					__sync_lock_test_and_set(&p_queue[current_consume_index].e_state, EMPTY);
 					__sync_lock_test_and_set(&p_queue[current_consume_index].b_door, BACK_DOOR_OPEN);
-					
+
 					return true;
 				}
 				else
@@ -1411,22 +1438,22 @@ loop_consume:
 		}
 
 	private:
-                enum entry_state {EMPTY = 0, PRODUCT, FULL, CONSUME};
-                enum back_door {BACK_DOOR_OPEN = 0, BACK_DOOR_CLOSE};
+		enum entry_state {EMPTY = 0, PRODUCT, FULL, CONSUME};
+		enum back_door {BACK_DOOR_OPEN = 0, BACK_DOOR_CLOSE};
 
-                typedef struct
-                {
-                        T data;
+		typedef struct
+		{
+			T data;
 
-                        entry_state e_state;
+			entry_state e_state;
 
-                        back_door b_door;
-                } ENTRY;
+			back_door b_door;
+		} ENTRY;
 
-                ENTRY *p_queue __attribute__((aligned(64)));
-                unsigned int size __attribute__((aligned(64)));
-                unsigned long product_index __attribute__((aligned(64)));
-                unsigned long consume_index __attribute__((aligned(64)));
+		ENTRY *p_queue __attribute__((aligned(64)));
+		unsigned int size __attribute__((aligned(64)));
+		unsigned long product_index __attribute__((aligned(64)));
+		unsigned long consume_index __attribute__((aligned(64)));
 };
 
 // 单生产者单消费者非阻塞队列
@@ -1438,7 +1465,7 @@ class CasQueueNoBlockOPOC
 		{
 			size = 16384;
 			product_index = consume_index = 0;
-			
+
 			p_queue = new ENTRY [size];
 
 			// 初始化队列
@@ -1511,17 +1538,17 @@ class CasQueueNoBlockOPOC
 	private:
 		enum entry_state {EMPTY = 0, PRODUCT, FULL, CONSUME};
 
-                typedef struct
-                {
-                        T data;
+		typedef struct
+		{
+			T data;
 
-                        entry_state e_state;
-                } ENTRY;
+			entry_state e_state;
+		} ENTRY;
 
-                ENTRY *p_queue __attribute__((aligned(64)));
-                unsigned int size __attribute__((aligned(64)));
-                unsigned long product_index __attribute__((aligned(64)));
-                unsigned long consume_index __attribute__((aligned(64)));
+		ENTRY *p_queue __attribute__((aligned(64)));
+		unsigned int size __attribute__((aligned(64)));
+		unsigned long product_index __attribute__((aligned(64)));
+		unsigned long consume_index __attribute__((aligned(64)));
 };
 
 #endif
