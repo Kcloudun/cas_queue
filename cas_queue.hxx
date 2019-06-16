@@ -254,12 +254,12 @@ loop_consume:
 			consume_wait c_wait;
 		} ENTRY;
 
-		ENTRY *p_queue;
-		unsigned int size;
-		unsigned long product_index;
-		unsigned long consume_index;
+		ENTRY *p_queue __attribute__((aligned(64)));
+		unsigned int size __attribute__((aligned(64)));
+		unsigned long product_index __attribute__((aligned(64)));
+		unsigned long consume_index __attribute__((aligned(64)));
 
-		void __AwakeConsume(unsigned long __current_product_index)
+		inline void __AwakeConsume(unsigned long __current_product_index)
 		{
 			// 判断是忽略消费者还是唤醒消费者
 			bool is_ignore = __sync_bool_compare_and_swap(&p_queue[__current_product_index].c_wait, C_INIT, C_IGNORE);
@@ -280,7 +280,7 @@ loop_consume:
 			return;
 		}
 
-		void __AwakeProduct(unsigned long __current_consume_index)
+		inline void __AwakeProduct(unsigned long __current_consume_index)
 		{
 			// 判断是忽略生产者还是唤醒生产者
 			bool is_ignore = __sync_bool_compare_and_swap(&p_queue[__current_consume_index].p_wait, P_INIT, P_IGNORE);
@@ -522,12 +522,12 @@ loop_consume:
 			consume_wait c_wait;
 		} ENTRY;
 
-		ENTRY *p_queue;
-		unsigned int size;
-		unsigned long product_index;
-		unsigned long consume_index;
+		ENTRY *p_queue __attribute__((aligned(64)));
+		unsigned int size __attribute__((aligned(64)));
+		unsigned long product_index __attribute__((aligned(64)));
+		unsigned long consume_index __attribute__((aligned(64)));
 
-		void __AwakeConsume(unsigned long __current_product_index)
+		inline void __AwakeConsume(unsigned long __current_product_index)
 		{
 			// 判断是忽略消费者还是唤醒消费者
 			bool is_ignore = __sync_bool_compare_and_swap(&p_queue[__current_product_index].c_wait, C_INIT, C_IGNORE);
@@ -548,7 +548,7 @@ loop_consume:
 			return;
 		}
 
-		void __AwakeProduct(unsigned long __current_consume_index)
+		inline void __AwakeProduct(unsigned long __current_consume_index)
 		{
 			// 判断是忽略生产者还是唤醒生产者
 			bool is_ignore = __sync_bool_compare_and_swap(&p_queue[__current_consume_index].p_wait, P_INIT, P_IGNORE);
@@ -790,12 +790,12 @@ loop_consume:
 			consume_wait c_wait;
 		} ENTRY;
 
-		ENTRY *p_queue;
-		unsigned int size;
-		unsigned long product_index;
-		unsigned long consume_index;
+		ENTRY *p_queue __attribute__((aligned(64)));
+		unsigned int size __attribute__((aligned(64)));
+		unsigned long product_index __attribute__((aligned(64)));
+		unsigned long consume_index __attribute__((aligned(64)));
 
-		void __AwakeConsume(unsigned long __current_product_index)
+		inline void __AwakeConsume(unsigned long __current_product_index)
 		{
 			// 判断是忽略消费者还是唤醒消费者
 			bool is_ignore = __sync_bool_compare_and_swap(&p_queue[__current_product_index].c_wait, C_INIT, C_IGNORE);
@@ -816,7 +816,7 @@ loop_consume:
 			return;
 		}
 
-		void __AwakeProduct(unsigned long __current_consume_index)
+		inline void __AwakeProduct(unsigned long __current_consume_index)
 		{
 			// 判断是忽略生产者还是唤醒生产者
 			bool is_ignore = __sync_bool_compare_and_swap(&p_queue[__current_consume_index].p_wait, P_INIT, P_IGNORE);
@@ -1031,12 +1031,12 @@ loop_consume:
 			consume_wait c_wait;
 		} ENTRY;
 
-		ENTRY *p_queue;
-		unsigned int size;
-		unsigned long product_index;
-		unsigned long consume_index;
+		ENTRY *p_queue __attribute__((aligned(64)));
+		unsigned int size __attribute__((aligned(64)));
+		unsigned long product_index __attribute__((aligned(64)));
+		unsigned long consume_index __attribute__((aligned(64)));
 
-		void __AwakeConsume(unsigned long __current_product_index)
+		inline void __AwakeConsume(unsigned long __current_product_index)
 		{
 			// 判断是忽略消费者还是唤醒消费者
 			bool is_ignore = __sync_bool_compare_and_swap(&p_queue[__current_product_index].c_wait, C_INIT, C_IGNORE);
@@ -1057,7 +1057,7 @@ loop_consume:
 			return;
 		}
 
-		void __AwakeProduct(unsigned long __current_consume_index)
+		inline void __AwakeProduct(unsigned long __current_consume_index)
 		{
 			// 判断是忽略生产者还是唤醒生产者
 			bool is_ignore = __sync_bool_compare_and_swap(&p_queue[__current_consume_index].p_wait, P_INIT, P_IGNORE);
@@ -1200,10 +1200,10 @@ loop_consume:
                         back_door b_door;
                 } ENTRY;
 
-                ENTRY *p_queue;
-                unsigned int size;
-                unsigned long product_index;
-                unsigned long consume_index;
+                ENTRY *p_queue __attribute__((aligned(64)));
+                unsigned int size __attribute__((aligned(64)));
+                unsigned long product_index __attribute__((aligned(64)));
+                unsigned long consume_index __attribute__((aligned(64)));
 };
 
 // 多生产者单消费者非阻塞队列
@@ -1311,10 +1311,10 @@ loop_product:
                         front_door f_door;
                 } ENTRY;
 
-                ENTRY *p_queue;
-                unsigned int size;
-                unsigned long product_index;
-                unsigned long consume_index;
+                ENTRY *p_queue __attribute__((aligned(64)));
+                unsigned int size __attribute__((aligned(64)));
+                unsigned long product_index __attribute__((aligned(64)));
+                unsigned long consume_index __attribute__((aligned(64)));
 };
 
 // 单生产者多消费者非阻塞队列
@@ -1423,10 +1423,10 @@ loop_consume:
                         back_door b_door;
                 } ENTRY;
 
-                ENTRY *p_queue;
-                unsigned int size;
-                unsigned long product_index;
-                unsigned long consume_index;
+                ENTRY *p_queue __attribute__((aligned(64)));
+                unsigned int size __attribute__((aligned(64)));
+                unsigned long product_index __attribute__((aligned(64)));
+                unsigned long consume_index __attribute__((aligned(64)));
 };
 
 // 单生产者单消费者非阻塞队列
@@ -1470,6 +1470,7 @@ class CasQueueNoBlockOPOC
 		bool Product(T &t_product)
 		{
 			unsigned long current_product_index = product_index++;
+
 			current_product_index &= (size - 1);
 
 			bool is_product = __sync_bool_compare_and_swap(&p_queue[current_product_index].e_state, EMPTY, PRODUCT);
@@ -1490,6 +1491,7 @@ class CasQueueNoBlockOPOC
 		bool Consume(T &t_consume)
 		{
 			unsigned long current_consume_index = consume_index++;
+
 			current_consume_index &= (size - 1);
 
 			bool is_consume = __sync_bool_compare_and_swap(&p_queue[current_consume_index].e_state, FULL, CONSUME);
@@ -1516,10 +1518,10 @@ class CasQueueNoBlockOPOC
                         entry_state e_state;
                 } ENTRY;
 
-                ENTRY *p_queue;
-                unsigned int size;
-                unsigned long product_index;
-                unsigned long consume_index;
+                ENTRY *p_queue __attribute__((aligned(64)));
+                unsigned int size __attribute__((aligned(64)));
+                unsigned long product_index __attribute__((aligned(64)));
+                unsigned long consume_index __attribute__((aligned(64)));
 };
 
 #endif
