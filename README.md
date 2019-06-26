@@ -1,7 +1,6 @@
 # cas_queue
 
 // 在 master 分支上测试提交
-// 在 dev 分支上测试提交
 
 concurrence lock-free block and non-blocking queues
 
