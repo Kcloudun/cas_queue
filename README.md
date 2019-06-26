@@ -1,5 +1,7 @@
 # cas_queue
 
+// 测试从GitHub上pull下来后在dev分支下修改提交
+
 concurrence lock-free block and non-blocking queues
 
 并发无锁阻塞和非阻塞队列
