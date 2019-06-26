@@ -1,7 +1,5 @@
 # cas_queue
 
-// 在 master 分支上测试提交
-
 concurrence lock-free block and non-blocking queues
 
 并发无锁阻塞和非阻塞队列
