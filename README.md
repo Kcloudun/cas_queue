@@ -1,6 +1,6 @@
 # cas_queue
 
-// 测试从GitHub上pull下来后在dev分支下修改提交
+// hahaha
 
 concurrence lock-free block and non-blocking queues
 
