@@ -1,5 +1,7 @@
 # cas_queue
 
+// hahaha
+
 concurrence lock-free block and non-blocking queues
 
 并发无锁阻塞和非阻塞队列
